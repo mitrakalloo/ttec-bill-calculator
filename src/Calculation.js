@@ -116,7 +116,7 @@ export default function Calculation() {
                     className="text-gray-500 sm:text-sm"
                     id="price-currency"
                   >
-                    KWh/mnth
+                    KWh/mth
                   </span>
                 </div>
               </div>
