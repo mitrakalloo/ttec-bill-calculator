@@ -12,7 +12,7 @@ const mth_fee = 7.5;
 const calculateOldBill = (kwh) => {
   return (
     (
-      (calculateBill({ cost: oldCostLevels, levels: oldLevels }, kwh * 2) + 6) *
+      (calculateBill({ cost: oldCostLevels, levels: oldLevels }, kwh) + 6) *
       1.125
     ).toFixed(2) / 2
   );
@@ -20,7 +20,8 @@ const calculateOldBill = (kwh) => {
 
 const calculateNewBill = (kwh) => {
   return (
-    (calculateBill({ cost: newCostLevels, levels: newLevels }, kwh) + mth_fee) *
+    (calculateBill({ cost: newCostLevels, levels: newLevels }, kwh / 2) +
+      mth_fee) *
     1.125
   ).toFixed(2);
 };
@@ -32,7 +33,7 @@ const pricing = {
   ],
   tiers: [
     {
-      name: "Old",
+      name: "Old Bill",
       id: "tier-startup",
       href: "#",
       price: {
@@ -50,7 +51,7 @@ const pricing = {
       mostPopular: false,
     },
     {
-      name: "New",
+      name: "New Bill",
       id: "tier-enterprise",
       href: "#",
       price: {
@@ -76,18 +77,17 @@ function classNames(...classes) {
 }
 
 export default function Calculation() {
-  const [kwh, setKwh] = useState(200);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [frequency, setFrequency] = useState(pricing.frequencies[0]);
+  const [kwh, setKwh] = useState(2000);
+  const [frequency, setFrequency] = useState(pricing.frequencies[1]);
 
   return (
     <div className="bg-white">
       <main className="pb-10">
         {/* Pricing section */}
-        <div className="px-6 mx-auto mt-16 max-w-7xl sm:mt-8 lg:px-8">
+        <div className="px-6 mx-auto mt-4 max-w-7xl sm:mt-8 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-base font-semibold leading-7 text-indigo-600">
-              Pricing
+            <h1 className="text-base font-semibold leading-7 text-indigo-600 pt-4">
+              Enter Current Bi-Monthly Bill KWh Value
             </h1>
             {/* <p className="mt-2 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
               Pricing plans for teams of&nbsp;all&nbsp;sizes
@@ -116,7 +116,7 @@ export default function Calculation() {
                     className="text-gray-500 sm:text-sm"
                     id="price-currency"
                   >
-                    KWh/mth
+                    KWh/BiMonthly
                   </span>
                 </div>
               </div>
@@ -126,7 +126,7 @@ export default function Calculation() {
             Choose an affordable plan that’s packed with the best features for engaging your audience, creating customer
             loyalty, and driving sales.
           </p> */}
-          <div className="flex justify-center mt-16">
+          <div className="flex justify-center mt-8">
             <RadioGroup
               value={frequency}
               onChange={setFrequency}
@@ -171,9 +171,9 @@ export default function Calculation() {
                 >
                   {tier.name}
                 </h2>
-                <p className="mt-4 text-sm leading-6 text-gray-600">
+                {/* <p className="mt-4 text-sm leading-6 text-gray-600">
                   {tier.description}
-                </p>
+                </p> */}
                 <p className="flex items-baseline mt-6 gap-x-1">
                   <span className="text-4xl font-bold tracking-tight text-gray-900">
                     ${tier.price[frequency.value](kwh)}
