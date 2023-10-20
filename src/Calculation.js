@@ -1,35 +1,59 @@
 import { useState } from "react";
 import { RadioGroup } from "@headlessui/react";
 import { calculateBill } from "./utilities";
+import { CheckIcon } from "@heroicons/react/24/solid";
 
 const oldCostLevels = [0.26, 0.32, 0.37];
 const oldLevels = [400, 600, 999999];
 
 const newCostLevels = [0.28, 0.4, 0.54, 0.68];
 const newLevels = [200, 500, 700, 999999];
-const mth_fee = 7.5;
 
 const calculateOldBill = (kwh) => {
-  return (
-    (
-      (calculateBill({ cost: oldCostLevels, levels: oldLevels }, kwh) + 6) *
-      1.125
-    ).toFixed(2) / 2
-  );
+  const base = calculateBill({ cost: oldCostLevels, levels: oldLevels }, kwh);
+  const serviceCharge = 6;
+  const tax = (base + serviceCharge) * 0.125;
+
+  return {
+    base,
+    serviceCharge,
+    tax,
+  };
+
+  // return ((calculateBill({ cost: oldCostLevels, levels: oldLevels }, kwh) + 6) *
+  //     1.125)
+  //   .toFixed(2) / 2;
 };
 
 const calculateNewBill = (kwh) => {
-  return (
-    (calculateBill({ cost: newCostLevels, levels: newLevels }, kwh / 2) +
-      mth_fee) *
-    1.125
-  ).toFixed(2);
+  const base = calculateBill(
+    { cost: newCostLevels, levels: newLevels },
+    kwh / 2
+  );
+  const serviceCharge = 7.5;
+  const tax = (base + serviceCharge) * 0.125;
+
+  return {
+    base,
+    serviceCharge,
+    tax,
+  };
+
+  // return ((calculateBill({ cost: newCostLevels, levels: newLevels }, kwh / 2) +
+  //     mth_fee) *
+  //   1.125
+  // ).toFixed(2);
 };
 
 const pricing = {
   frequencies: [
-    { value: "monthly", label: "Monthly", priceSuffix: "/month" },
-    { value: "annually", label: "Bi-Monthly", priceSuffix: "/bi-month" },
+    { value: "monthly", label: "Monthly", priceSuffix: "/month", factor: 2 },
+    {
+      value: "annually",
+      label: "Bi-Monthly",
+      priceSuffix: "/bi-month",
+      factor: 1,
+    },
   ],
   tiers: [
     {
@@ -37,17 +61,29 @@ const pricing = {
       id: "tier-startup",
       href: "#",
       price: {
-        monthly: (k) => calculateOldBill(k),
-        annually: (k) => calculateOldBill(k) * 2,
+        monthly: (k) => {
+          const data = calculateOldBill(k);
+          return {
+            ...data,
+            ...{ total: (data.base + data.serviceCharge + data.tax) / 2 },
+          };
+        },
+        annually: (k) => {
+          const data = calculateOldBill(k);
+          return {
+            ...data,
+            ...{ total: data.base + data.serviceCharge + data.tax },
+          };
+        },
       },
       description: "old ttec billing values",
-      features: [
-        "25 products",
-        "Up to 10,000 subscribers",
-        "Advanced analytics",
-        "24-hour support response time",
-        "Marketing automations",
-      ],
+      features: (data, factor) => {
+        return [
+          `Base: $${(data.base / factor).toFixed(2)}`,
+          `Service Charge: $${(data.serviceCharge / factor).toFixed(2)}`,
+          `Tax: $${(data.tax / factor).toFixed(2)}`,
+        ];
+      },
       mostPopular: false,
     },
     {
@@ -55,17 +91,27 @@ const pricing = {
       id: "tier-enterprise",
       href: "#",
       price: {
-        monthly: (k) => calculateNewBill(k),
-        annually: (k) => calculateNewBill(k) * 2,
+        monthly: (k) => {
+          const data = calculateNewBill(k);
+
+          return {
+            ...data,
+            ...{ total: data.base + data.serviceCharge + data.tax },
+          };
+        },
+        annually: (k) => {
+          const data = calculateNewBill(k);
+          return {
+            ...data,
+            ...{ total: (data.base + data.serviceCharge + data.tax) * 2 },
+          };
+        },
       },
       description: "new proposed values",
-      features: [
-        "Unlimited products",
-        "Unlimited subscribers",
-        "Advanced analytics",
-        "1-hour, dedicated support response time",
-        "Marketing automations",
-        "Custom reporting tools",
+      features: (data, factor) => [
+        `Base: $${(data.base * (factor === 1 ? 2 : 1)).toFixed(2)}`,
+        `Service Charge: $${(data.serviceCharge * (factor === 1 ? 2 : 1)).toFixed(2)}`,
+        `Tax: $${(data.tax * (factor === 1 ? 2 : 1)).toFixed(2)}`,
       ],
       mostPopular: true,
     },
@@ -152,37 +198,40 @@ export default function Calculation() {
             </RadioGroup>
           </div>
           <div className="grid max-w-md grid-cols-1 gap-8 mx-auto mt-10 isolate md:max-w-2xl md:grid-cols-2 lg:max-w-4xl xl:mx-0 xl:max-w-none xl:grid-cols-4">
-            {pricing.tiers.map((tier) => (
-              <div
-                key={tier.id}
-                className={classNames(
-                  tier.mostPopular
-                    ? "ring-2 ring-indigo-600"
-                    : "ring-1 ring-gray-200",
-                  "rounded-3xl p-8"
-                )}
-              >
-                <h2
-                  id={tier.id}
+            {pricing.tiers.map((tier) => {
+              const _data = tier.price[frequency.value](kwh);
+              var { base, serviceCharge, tax, total } = _data;
+              return (
+                <div
+                  key={tier.id}
                   className={classNames(
-                    tier.mostPopular ? "text-indigo-600" : "text-gray-900",
-                    "text-lg font-semibold leading-8"
+                    tier.mostPopular
+                      ? "ring-2 ring-indigo-600"
+                      : "ring-1 ring-gray-200",
+                    "rounded-3xl p-8"
                   )}
                 >
-                  {tier.name}
-                </h2>
-                {/* <p className="mt-4 text-sm leading-6 text-gray-600">
+                  <h2
+                    id={tier.id}
+                    className={classNames(
+                      tier.mostPopular ? "text-indigo-600" : "text-gray-900",
+                      "text-lg font-semibold leading-8"
+                    )}
+                  >
+                    {tier.name}
+                  </h2>
+                  {/* <p className="mt-4 text-sm leading-6 text-gray-600">
                   {tier.description}
                 </p> */}
-                <p className="flex items-baseline mt-6 gap-x-1">
-                  <span className="text-4xl font-bold tracking-tight text-gray-900">
-                    ${tier.price[frequency.value](kwh)}
-                  </span>
-                  <span className="text-sm font-semibold leading-6 text-gray-600">
-                    {frequency.priceSuffix}
-                  </span>
-                </p>
-                {/* <a
+                  <p className="flex items-baseline mt-6 gap-x-1">
+                    <span className="text-4xl font-bold tracking-tight text-gray-900">
+                      ${total.toFixed(2)}
+                    </span>
+                    <span className="text-sm font-semibold leading-6 text-gray-600">
+                      {frequency.priceSuffix}
+                    </span>
+                  </p>
+                  {/* <a
                   href={tier.href}
                   aria-describedby={tier.id}
                   className={classNames(
@@ -194,16 +243,20 @@ export default function Calculation() {
                 >
                   Buy plan
                 </a> */}
-                {/* <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
-                  {tier.features.map((feature) => (
-                    <li key={feature} className="flex gap-x-3">
-                      <CheckIcon className="flex-none w-5 h-6 text-indigo-600" aria-hidden="true" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul> */}
-              </div>
-            ))}
+                  <ul className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
+                    {tier.features(_data, frequency.factor).map((feature) => (
+                      <li key={feature} className="flex gap-x-3">
+                        <CheckIcon
+                          className="flex-none w-5 h-6 text-indigo-600"
+                          aria-hidden="true"
+                        />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
         </div>
       </main>
