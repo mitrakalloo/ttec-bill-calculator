@@ -19,10 +19,6 @@ const calculateOldBill = (kwh) => {
     serviceCharge,
     tax,
   };
-
-  // return ((calculateBill({ cost: oldCostLevels, levels: oldLevels }, kwh) + 6) *
-  //     1.125)
-  //   .toFixed(2) / 2;
 };
 
 const calculateNewBill = (kwh) => {
@@ -38,18 +34,21 @@ const calculateNewBill = (kwh) => {
     serviceCharge,
     tax,
   };
+};
 
-  // return ((calculateBill({ cost: newCostLevels, levels: newLevels }, kwh / 2) +
-  //     mth_fee) *
-  //   1.125
-  // ).toFixed(2);
+const calculateNewTTecBill = (kwh) => {
+  return {
+    base: "TBD",
+    serviceCharge: "TBD",
+    tax: "TBD",
+  };
 };
 
 const pricing = {
   frequencies: [
     { value: "monthly", label: "Monthly", priceSuffix: "/month", factor: 2 },
     {
-      value: "annually",
+      value: "bimonthly",
       label: "Bi-Monthly",
       priceSuffix: "/bi-month",
       factor: 1,
@@ -58,21 +57,25 @@ const pricing = {
   tiers: [
     {
       name: "Old Bill",
-      id: "tier-startup",
+      id: "tier-old",
       href: "#",
       price: {
         monthly: (k) => {
           const data = calculateOldBill(k);
+          const total = (data.base + data.serviceCharge + data.tax) / 2
           return {
             ...data,
-            ...{ total: (data.base + data.serviceCharge + data.tax) / 2 },
+            ...{ total },
+            ...{ discount: total <= 300 ? (total * 0.35).toFixed(2) : 0 }
           };
         },
-        annually: (k) => {
+        bimonthly: (k) => {
           const data = calculateOldBill(k);
+          const total = data.base + data.serviceCharge + data.tax
           return {
             ...data,
-            ...{ total: data.base + data.serviceCharge + data.tax },
+            ...{ total },
+            ...{ discount: total <= 300 ? (total * 0.35).toFixed(2) : 0 }
           };
         },
       },
@@ -82,28 +85,32 @@ const pricing = {
           `Base: $${(data.base / factor).toFixed(2)}`,
           `Service Charge: $${(data.serviceCharge / factor).toFixed(2)}`,
           `Tax: $${(data.tax / factor).toFixed(2)}`,
+          data.discount != 0 ? `Discount: -($${data.discount})` : null
         ];
       },
       mostPopular: false,
     },
     {
-      name: "New Bill",
-      id: "tier-enterprise",
+      name: "RIC Proposed",
+      id: "tier-ric",
       href: "#",
       price: {
         monthly: (k) => {
           const data = calculateNewBill(k);
-
+          const total = data.base + data.serviceCharge + data.tax
           return {
             ...data,
-            ...{ total: data.base + data.serviceCharge + data.tax },
+            ...{ total },
+            ...{ discount: 0 }
           };
         },
-        annually: (k) => {
+        bimonthly: (k) => {
           const data = calculateNewBill(k);
+          const total = (data.base + data.serviceCharge + data.tax) * 2
           return {
             ...data,
-            ...{ total: (data.base + data.serviceCharge + data.tax) * 2 },
+            ...{ total },
+            ...{ discount: 0 }
           };
         },
       },
@@ -115,6 +122,36 @@ const pricing = {
       ],
       mostPopular: true,
     },
+    // {
+    //   name: "New TTec Bill",
+    //   id: "tier-new",
+    //   href: "#",
+    //   price: {
+    //     monthly: (k) => {
+    //       const data = calculateNewTTecBill(k);
+    //       return {
+    //         ...data,
+    //         ...{ total: "TBD" },
+    //       };
+    //     },
+    //     bimonthly: (k) => {
+    //       const data = calculateNewTTecBill(k);
+    //       return {
+    //         ...data,
+    //         ...{ total: "TBD" },
+    //       };
+    //     },
+    //   },
+    //   description: "old ttec billing values",
+    //   features: (data, factor) => {
+    //     return [
+    //       `Base: TBD`,
+    //       `Service Charge: TBD`,
+    //       `Tax: TBD`,
+    //     ];
+    //   },
+    //   mostPopular: false,
+    // },
   ],
 };
 
@@ -135,9 +172,6 @@ export default function Calculation() {
             <h1 className="text-base font-semibold leading-7 text-indigo-600 pt-4">
               Enter Current Bi-Monthly Bill KWh Value
             </h1>
-            {/* <p className="mt-2 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-              Pricing plans for teams of&nbsp;all&nbsp;sizes
-            </p> */}
 
             <div>
               <div className="relative mt-2 rounded-md shadow-sm">
@@ -168,10 +202,6 @@ export default function Calculation() {
               </div>
             </div>
           </div>
-          {/* <p className="max-w-2xl mx-auto mt-6 text-lg leading-8 text-center text-gray-600">
-            Choose an affordable plan that’s packed with the best features for engaging your audience, creating customer
-            loyalty, and driving sales.
-          </p> */}
           <div className="flex justify-center mt-8">
             <RadioGroup
               value={frequency}
@@ -200,7 +230,8 @@ export default function Calculation() {
           <div className="grid max-w-md grid-cols-1 gap-8 mx-auto mt-10 isolate md:max-w-2xl md:grid-cols-2 lg:max-w-4xl xl:mx-0 xl:max-w-none xl:grid-cols-4">
             {pricing.tiers.map((tier) => {
               const _data = tier.price[frequency.value](kwh);
-              var { base, serviceCharge, tax, total } = _data;
+              const { base, serviceCharge, tax, total, discount } = _data;
+
               return (
                 <div
                   key={tier.id}
@@ -225,26 +256,15 @@ export default function Calculation() {
                 </p> */}
                   <p className="flex items-baseline mt-6 gap-x-1">
                     <span className="text-4xl font-bold tracking-tight text-gray-900">
-                      ${total.toFixed(2)}
+                      ${isNaN(total) ? "TBD" : (total - discount).toFixed(2)}
                     </span>
                     <span className="text-sm font-semibold leading-6 text-gray-600">
                       {frequency.priceSuffix}
                     </span>
                   </p>
-                  {/* <a
-                  href={tier.href}
-                  aria-describedby={tier.id}
-                  className={classNames(
-                    tier.mostPopular
-                      ? 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-500'
-                      : 'text-indigo-600 ring-1 ring-inset ring-indigo-200 hover:ring-indigo-300',
-                    'mt-6 block rounded-md py-2 px-3 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
-                  )}
-                >
-                  Buy plan
-                </a> */}
+
                   <ul className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
-                    {tier.features(_data, frequency.factor).map((feature) => (
+                    {tier.features(_data, frequency.factor).filter(f => f).map((feature) => (
                       <li key={feature} className="flex gap-x-3">
                         <CheckIcon
                           className="flex-none w-5 h-6 text-indigo-600"
